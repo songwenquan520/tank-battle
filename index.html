@@ -234,7 +234,7 @@ let animFrame = 0;
 let keys = {};
 const KEY_MAP = { ArrowUp:'ArrowUp', ArrowDown:'ArrowDown', ArrowLeft:'ArrowLeft', ArrowRight:'ArrowRight',
   w:'ArrowUp',W:'ArrowUp', s:'ArrowDown',S:'ArrowDown', a:'ArrowLeft',A:'ArrowLeft', d:'ArrowRight',D:'ArrowRight',
-  ' ':'Space', j:'Space',J:'Space', p:'KeyP',P:'KeyP', r:'KeyR',R:'KeyR' };
+  ' ':'Space', 'Space':'Space', j:'Space',J:'Space', p:'KeyP',P:'KeyP', r:'KeyR',R:'KeyR' };
 
 // ─── DOM ────────────────────────────────────────────────
 const canvas = document.getElementById('game');
@@ -980,7 +980,8 @@ function gameLoop(timestamp) {
   }
   // 计算 delta time（归一化到 60fps）
   if (lastTime > 0) {
-    dt = Math.min((now - lastTime) / 16.667, 3.0);
+    const raw = (now - lastTime) / 16.667;
+    dt = raw > 0 ? Math.min(raw, 3.0) : 1;
   }
   lastTime = now;
   if (!gamePaused && gameRunning && !gameOver) {
