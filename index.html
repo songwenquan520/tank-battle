@@ -972,16 +972,17 @@ function showOverlay(type) {
 // ─── 游戏循环 ───────────────────────────────────────────
 let lastTime = 0, dt = 1;
 function gameLoop(timestamp) {
+  const now = timestamp || performance.now();
   if (!gameRunning && !gameOver) {
-    lastTime = timestamp;
+    lastTime = now;
     requestAnimationFrame(gameLoop);
     return;
   }
   // 计算 delta time（归一化到 60fps）
   if (lastTime > 0) {
-    dt = Math.min((timestamp - lastTime) / 16.667, 3.0);
+    dt = Math.min((now - lastTime) / 16.667, 3.0);
   }
-  lastTime = timestamp;
+  lastTime = now;
   if (!gamePaused && gameRunning && !gameOver) {
     updatePlayer();
     updateEnemies();
