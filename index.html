@@ -293,8 +293,8 @@ class Bullet {
     this.radius = isPlayerBullet ? 3 : 2.5;
   }
   move() {
-    this.x += DX[this.dir] * this.speed * (typeof dt !== 'undefined' ? dt : 1);
-    this.y += DY[this.dir] * this.speed * (typeof dt !== 'undefined' ? dt : 1);
+    this.x += DX[this.dir] * this.speed;
+    this.y += DY[this.dir] * this.speed;
   }
 }
 
@@ -309,7 +309,7 @@ class Particle {
     this.color = color;
     this.r = 2 + Math.random()*3;
   }
-  update() { this.x+=this.vx*dt; this.y+=this.vy*dt; this.life-=dt; }
+  update() { this.x+=this.vx; this.y+=this.vy; this.life--; }
   get alive() { return this.life>0; }
 }
 
@@ -520,7 +520,7 @@ function handleInput() {
 
   if (moving) {
     player.dir = newDir;
-    const moveAmount = player.speed * 0.06 * dt;
+    const moveAmount = player.speed * 0.06;
     let moveX = 0, moveY = 0;
     if (player.dir === DIR.UP)    moveY = -moveAmount;
     if (player.dir === DIR.DOWN)  moveY =  moveAmount;
@@ -560,16 +560,16 @@ function shoot(tank) {
 // ─── AI 移动 ────────────────────────────────────────────
 function aiMove(enemy) {
   if (enemy.birthTimer > 0) return;
-  enemy.moveTimer -= dt;
-  enemy.changeDirTimer -= dt;
+  enemy.moveTimer--;
+  enemy.changeDirTimer--;
 
   // 偶尔改变方向
-  if (enemy.changeDirTimer <= 0 || Math.random()<0.02 * dt) {
+  if (enemy.changeDirTimer <= 0 || Math.random()<0.02) {
     enemy.moveDir = Math.floor(Math.random()*4);
     enemy.changeDirTimer = 40 + Math.floor(Math.random()*80);
   }
 
-  const moveAmount = enemy.speed * 0.06 * dt;
+  const moveAmount = enemy.speed * 0.04;
   let dx = 0, dy = 0;
   if (enemy.moveDir === DIR.UP)    dy = -moveAmount;
   if (enemy.moveDir === DIR.DOWN)  dy =  moveAmount;
@@ -586,8 +586,8 @@ function aiMove(enemy) {
   }
 
   // 射击
-  enemy.shootCooldown -= dt;
-  if (enemy.shootCooldown <= 0 && Math.random()<0.03 * dt) {
+  enemy.shootCooldown--;
+  if (enemy.shootCooldown <= 0 && Math.random()<0.03) {
     shoot(enemy);
     enemy.shootCooldown = enemy.shootDelay;
   }
@@ -651,7 +651,7 @@ function handleBullets() {
 function handlePowerUps() {
   for (const pu of powerUps) {
     if (!pu.alive) continue;
-    pu.timer -= dt;
+    pu.timer--;
     if (pu.timer <= 0) { pu.alive = false; continue; }
     // 玩家碰撞
     if (player && player.alive) {
@@ -680,10 +680,10 @@ function handlePowerUps() {
 function updateEnemies() {
   // 计时器倒计时
   for (const e of enemies) {
-    if (e.birthTimer > 0) e.birthTimer -= dt;
+    if (e.birthTimer > 0) e.birthTimer--;
   }
   // 生成
-  spawnTimer += dt;
+  spawnTimer++;
   if (spawnTimer >= spawnInterval) {
     spawnTimer = 0;
     spawnEnemy();
@@ -699,10 +699,10 @@ function updateEnemies() {
 // ─── 更新玩家 ───────────────────────────────────────────
 function updatePlayer() {
   if (!player || !player.alive) return;
-  if (player.birthTimer > 0) { player.birthTimer -= dt; return; }
-  player.shootCooldown = Math.max(0, player.shootCooldown - dt);
+  if (player.birthTimer > 0) { player.birthTimer--; return; }
+  player.shootCooldown = Math.max(0, player.shootCooldown - 1);
   if (player.powered) {
-    player.powerTimer -= dt;
+    player.powerTimer--;
     if (player.powerTimer <= 0) player.powered = false;
   }
   handleInput();
@@ -970,20 +970,12 @@ function showOverlay(type) {
 }
 
 // ─── 游戏循环 ───────────────────────────────────────────
-let lastTime = 0, dt = 1;
 function gameLoop(timestamp) {
-  const now = timestamp || performance.now();
   if (!gameRunning && !gameOver) {
-    lastTime = now;
+    // 还没开始
     requestAnimationFrame(gameLoop);
     return;
   }
-  // 计算 delta time（归一化到 60fps）
-  if (lastTime > 0) {
-    const raw = (now - lastTime) / 16.667;
-    dt = raw > 0 ? Math.min(raw, 3.0) : 1;
-  }
-  lastTime = now;
   if (!gamePaused && gameRunning && !gameOver) {
     updatePlayer();
     updateEnemies();
@@ -991,7 +983,7 @@ function gameLoop(timestamp) {
     handlePowerUps();
     updateParticles();
   }
-  animFrame += dt;
+  animFrame++;
   render();
   requestAnimationFrame(gameLoop);
 }
