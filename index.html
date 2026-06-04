@@ -293,8 +293,8 @@ class Bullet {
     this.radius = isPlayerBullet ? 3 : 2.5;
   }
   move() {
-    this.x += DX[this.dir] * this.speed;
-    this.y += DY[this.dir] * this.speed;
+    this.x += DX[this.dir] * this.speed * (typeof dt !== 'undefined' ? dt : 1);
+    this.y += DY[this.dir] * this.speed * (typeof dt !== 'undefined' ? dt : 1);
   }
 }
 
@@ -309,7 +309,7 @@ class Particle {
     this.color = color;
     this.r = 2 + Math.random()*3;
   }
-  update() { this.x+=this.vx; this.y+=this.vy; this.life--; }
+  update() { this.x+=this.vx*dt; this.y+=this.vy*dt; this.life-=dt; }
   get alive() { return this.life>0; }
 }
 
@@ -520,13 +520,13 @@ function handleInput() {
 
   if (moving) {
     player.dir = newDir;
-    const moveAmount = player.speed * 0.06;
+    const moveAmount = player.speed * 0.06 * dt;
     let moveX = 0, moveY = 0;
     if (player.dir === DIR.UP)    moveY = -moveAmount;
     if (player.dir === DIR.DOWN)  moveY =  moveAmount;
     if (player.dir === DIR.LEFT)  moveX = -moveAmount;
     if (player.dir === DIR.RIGHT) moveX =  moveAmount;
-    if (!tankCollidesMap(player, moveX, moveY)) {
+    if (!tankCollidesMap(player, moveX * CELL, moveY * CELL)) {
       player.x += moveX;
       player.y += moveY;
     }
@@ -560,23 +560,23 @@ function shoot(tank) {
 // ─── AI 移动 ────────────────────────────────────────────
 function aiMove(enemy) {
   if (enemy.birthTimer > 0) return;
-  enemy.moveTimer--;
-  enemy.changeDirTimer--;
+  enemy.moveTimer -= dt;
+  enemy.changeDirTimer -= dt;
 
   // 偶尔改变方向
-  if (enemy.changeDirTimer <= 0 || Math.random()<0.02) {
+  if (enemy.changeDirTimer <= 0 || Math.random()<0.02 * dt) {
     enemy.moveDir = Math.floor(Math.random()*4);
     enemy.changeDirTimer = 40 + Math.floor(Math.random()*80);
   }
 
-  const moveAmount = enemy.speed * 0.04;
+  const moveAmount = enemy.speed * 0.06 * dt;
   let dx = 0, dy = 0;
   if (enemy.moveDir === DIR.UP)    dy = -moveAmount;
   if (enemy.moveDir === DIR.DOWN)  dy =  moveAmount;
   if (enemy.moveDir === DIR.LEFT)  dx = -moveAmount;
   if (enemy.moveDir === DIR.RIGHT) dx =  moveAmount;
 
-  if (tankCollidesMap(enemy, dx, dy)) {
+  if (tankCollidesMap(enemy, dx * CELL, dy * CELL)) {
     enemy.moveDir = Math.floor(Math.random()*4);
     enemy.changeDirTimer = 30;
   } else {
@@ -586,8 +586,8 @@ function aiMove(enemy) {
   }
 
   // 射击
-  enemy.shootCooldown--;
-  if (enemy.shootCooldown <= 0 && Math.random()<0.03) {
+  enemy.shootCooldown -= dt;
+  if (enemy.shootCooldown <= 0 && Math.random()<0.03 * dt) {
     shoot(enemy);
     enemy.shootCooldown = enemy.shootDelay;
   }
@@ -651,7 +651,7 @@ function handleBullets() {
 function handlePowerUps() {
   for (const pu of powerUps) {
     if (!pu.alive) continue;
-    pu.timer--;
+    pu.timer -= dt;
     if (pu.timer <= 0) { pu.alive = false; continue; }
     // 玩家碰撞
     if (player && player.alive) {
@@ -680,10 +680,10 @@ function handlePowerUps() {
 function updateEnemies() {
   // 计时器倒计时
   for (const e of enemies) {
-    if (e.birthTimer > 0) e.birthTimer--;
+    if (e.birthTimer > 0) e.birthTimer -= dt;
   }
   // 生成
-  spawnTimer++;
+  spawnTimer += dt;
   if (spawnTimer >= spawnInterval) {
     spawnTimer = 0;
     spawnEnemy();
@@ -699,10 +699,10 @@ function updateEnemies() {
 // ─── 更新玩家 ───────────────────────────────────────────
 function updatePlayer() {
   if (!player || !player.alive) return;
-  if (player.birthTimer > 0) { player.birthTimer--; return; }
-  player.shootCooldown = Math.max(0, player.shootCooldown - 1);
+  if (player.birthTimer > 0) { player.birthTimer -= dt; return; }
+  player.shootCooldown = Math.max(0, player.shootCooldown - dt);
   if (player.powered) {
-    player.powerTimer--;
+    player.powerTimer -= dt;
     if (player.powerTimer <= 0) player.powered = false;
   }
   handleInput();
@@ -970,13 +970,18 @@ function showOverlay(type) {
 }
 
 // ─── 游戏循环 ───────────────────────────────────────────
-let lastTime = 0;
+let lastTime = 0, dt = 1;
 function gameLoop(timestamp) {
   if (!gameRunning && !gameOver) {
-    // 还没开始
+    lastTime = timestamp;
     requestAnimationFrame(gameLoop);
     return;
   }
+  // 计算 delta time（归一化到 60fps）
+  if (lastTime > 0) {
+    dt = Math.min((timestamp - lastTime) / 16.667, 3.0);
+  }
+  lastTime = timestamp;
   if (!gamePaused && gameRunning && !gameOver) {
     updatePlayer();
     updateEnemies();
@@ -984,7 +989,7 @@ function gameLoop(timestamp) {
     handlePowerUps();
     updateParticles();
   }
-  animFrame++;
+  animFrame += dt;
   render();
   requestAnimationFrame(gameLoop);
 }
